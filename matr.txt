@@ -1,0 +1,56 @@
+#define VECTOR_SIZE 100
+#define SIZE 10
+
+float calc_det(int* a, int size)
+{
+    float tmp[VECTOR_SIZE];
+    float koef;
+    for (int i = 0; i < VECTOR_SIZE; i++)
+        tmp[i] = a[i];
+    for (int i = 0; i < size - 1; i++)
+    {
+        for (int j = i + 1; j < size; j++)
+        {
+            koef = (float)tmp[j * size + i] / tmp[i * size + i];
+            for (int ind = 0; ind < size; ind++)
+                tmp[j * size + ind] -= tmp[i * size + ind] * koef;
+        }
+    }
+
+    float res = 1;
+    for (int i = size - 1; i >= 0; i--)
+        res *= tmp[(size + 1) * i];
+
+    return res;
+}
+
+__kernel
+void del_extra(__global int* A, __global int* B)
+{
+    int index = get_global_id(0);
+    int a_copy[VECTOR_SIZE], b_copy[VECTOR_SIZE];
+    
+    int sn = SIZE - 1;
+    int i = index / SIZE, j = index % SIZE;
+    int z = 0;
+    for (int k = 0; k < VECTOR_SIZE; k++)
+    {
+        if (k / SIZE == i || k % SIZE == j)
+            continue;
+        b_copy[z] = A[k];
+        z++;
+    }
+    double rew = calc_det(b_copy, sn);
+    double t = (int)rew + 0.5;
+    double tm = (int)rew - 0.5;
+    if (rew - t > 0 && rew > 0)
+        B[i + SIZE * j] = (int)rew + 1;
+    if (rew - tm < 0 && rew < 0)
+        B[i + SIZE * j] = (int)rew - 1;
+    else
+        B[i + SIZE * j] = (int)rew;
+    
+    
+    if ((i + j) % 2 != 0)
+    B[i + SIZE * j] = -B[i + SIZE * j];
+}
